@@ -1,136 +1,132 @@
 # Food Pack Scanner
 
-A full-stack web app that scans food package labels, extracts ingredients with OCR, and uses AI to flag harmful additives, health risks, and who should avoid the product.
+> Collaborative project — scan food packaging, extract ingredients via OCR, analyze health risks with AI, and get a structured safety report.
+
+**Live demo:** [food-packet-analyzer-app.vercel.app](https://food-packet-analyzer-app.vercel.app)  
+**Partner repo:** [shripoornasunilpetkar/Food-Packet-Analyzer-App](https://github.com/shripoornasunilpetkar/Food-Packet-Analyzer-App)
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Demo flow
+## Contributors
 
-1. Upload or capture a photo of a food package ingredients label
-2. **Tesseract.js** extracts text via OCR
-3. **Google Gemini** analyzes ingredients and returns a structured health report
-4. View health score, harmful ingredients, warnings, and long-term risks
+| Name | GitHub |
+|------|--------|
+| Sudarshan Bhat | [@Sudarshanbhat101](https://github.com/Sudarshanbhat101) |
+| Shripoorna Sunil Petkar | [@shripoornasunilpetkar](https://github.com/shripoornasunilpetkar) |
 
-## Features
+## What it does
 
-- Camera capture and image upload
-- OCR-based ingredient extraction
-- AI-powered health analysis with structured output
-- Health score (1–10) with risk level
-- Responsive, mobile-friendly UI
-- REST API backend with static frontend serving
+1. User uploads or captures a food package label image (`scan.html`)
+2. Frontend sends base64 image to `POST /analyze`
+3. Backend runs **Tesseract.js** OCR on the image
+4. Extracted text is sent to **Google Gemini** (`gemini-2.0-flash`)
+5. `parseAnalysis()` converts Gemini's text into a structured JSON object
+6. Result is stored in `localStorage` and shown on `results.html` with **Chart.js**
 
 ## Tech stack
 
-| Layer | Technologies |
-|-------|-------------|
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
-| Backend | Node.js, Express.js |
-| OCR | Tesseract.js |
-| AI | Google Gemini API (`gemini-2.0-flash`) |
-| Tooling | dotenv, multer, cors |
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) 18 or higher
-- [npm](https://www.npmjs.com/)
-- A [Google AI Studio](https://aistudio.google.com/) API key (Gemini)
-
-## Getting started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Sudarshanbhat101/Food-Packet-Analyzer.git
-cd Food-Packet-Analyzer
-```
-
-### 2. Install dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 3. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-PORT=3000
-```
-
-### 4. Run the application
-
-```bash
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-For development with auto-reload:
-
-```bash
-npm run dev
-```
-
-## API endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/test` | Health check |
-| `POST` | `/api/scan` | Upload image (multipart) and run OCR + analysis |
-| `POST` | `/analyze` | Analyze base64-encoded image |
+| Layer | Technology | Role |
+|-------|------------|------|
+| Frontend | HTML, CSS, Vanilla JS | Scan UI, camera/upload, results dashboard |
+| Frontend | Chart.js (CDN) | Health score doughnut chart |
+| Backend | Node.js + Express | API server, serves `frontend/` statically |
+| OCR | Tesseract.js | Ingredient text extraction from images |
+| AI | Google Gemini API | Ingredient health analysis |
+| Upload | multer | Alternate `POST /api/scan` multipart route |
 
 ## Project structure
 
 ```
 Food-Packet-Analyzer/
 ├── backend/
-│   ├── server.js          # Express server, OCR, Gemini integration
-│   ├── package.json
-│   └── uploads/           # Temporary upload storage (gitignored)
+│   ├── server.js           # Express app, OCR, Gemini, parseAnalysis()
+│   ├── eng.traineddata     # Tesseract English language data
+│   └── package.json
 ├── frontend/
-│   ├── index.html         # Landing page
-│   ├── scan.html          # Upload / camera scan UI
-│   ├── results.html       # Analysis results
-│   ├── style.css
-│   └── *.js
+│   ├── index.html          # Landing page
+│   ├── scan.html + scan.js # Camera / upload → POST /analyze
+│   ├── results.html + results.js  # Reads localStorage, renders report
+│   └── style.css
+├── script.js               # UI effects (legacy helper)
 ├── .env.example
-├── .gitignore
-├── LICENSE
-└── README.md
+└── package.json
+```
+
+## API reference
+
+### `POST /analyze` (main flow used by frontend)
+
+**Request**
+```json
+{
+  "image": "data:image/jpeg;base64,..."
+}
+```
+
+**Success response** — built by `parseAnalysis()` in `backend/server.js`:
+```json
+{
+  "healthScore": 6,
+  "healthRating": "Good",
+  "riskLevel": "Moderate",
+  "harmfulIngredients": [
+    { "name": "Sodium Benzoate", "severity": "Moderate", "description": "..." }
+  ],
+  "warnings": [
+    { "group": "People with asthma", "description": "..." }
+  ],
+  "longTermRisks": [
+    { "name": "Metabolic issues", "severity": "Low", "description": "..." }
+  ],
+  "totalHarmful": 2,
+  "criticalIngredients": 0,
+  "highRiskGroups": 1,
+  "criticalRisks": 0
+}
+```
+
+**Severity values:** `Critical` | `Moderate` | `Low`  
+**Health rating:** `Excellent` (8+) | `Good` (6+) | `Fair` (4+) | `Poor` (<4)
+
+### Other endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/test` | Health check |
+| `POST` | `/api/scan` | Multipart image upload (returns raw `text` + `analysis` string) |
+
+## Setup
+
+```bash
+git clone https://github.com/Sudarshanbhat101/Food-Packet-Analyzer.git
+cd Food-Packet-Analyzer
+cd backend && npm install
+```
+
+Create `backend/.env`:
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+PORT=3000
+```
+
+Get a Gemini key from [Google AI Studio](https://aistudio.google.com/).
+
+```bash
+npm start
+# Open http://localhost:3000
 ```
 
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
-| `PORT` | No | Server port (default: `3000`) |
+| `GEMINI_API_KEY` | Yes | Google Gemini API key (used by `server.js`) |
+| `PORT` | No | Server port (default `3000`) |
 
-## Screenshots
-
-> Add screenshots of the scan and results pages here after deployment.
-
-## Future improvements
-
-- [ ] User accounts and scan history
-- [ ] Barcode lookup integration
-- [ ] Multi-language label support
-- [ ] Deploy to cloud (Render / Railway / Vercel)
-
-## Author
-
-**Sudarshan Bhat** — [GitHub](https://github.com/Sudarshanbhat101)
+> Note: The code uses `GEMINI_API_KEY`, not Google Cloud Vision.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT — see [LICENSE](LICENSE).
